@@ -1,0 +1,7 @@
+{
+  "name": "Będziesz Szprechał - DeutschMaster",
+  "description": "Zaawansowana nauka języka niemieckiego z AI: słówka z obrazkami, pełne zdania oraz odmiana czasowników w różnych czasach z natychmiastowym feedbackiem.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

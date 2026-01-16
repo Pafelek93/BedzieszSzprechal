@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeutschMaster - Ucz się Niemieckiego</title>
+    <meta name="theme-color" content="#fbbf24">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Zapobieganie zoomowaniu na inputach w iOS */
+        input, textarea {
+            font-size: 16px !important;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // Bezpieczna rejestracja Service Workera
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Próba rejestracji SW. W środowiskach typu preview błąd origin mismatch 
+                // jest częsty, dlatego używamy bloku catch, aby nie przerywać działania aplikacji.
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => {
+                        console.log('Service Worker zarejestrowany:', reg.scope);
+                    })
+                    .catch(err => {
+                        console.warn('Rejestracja Service Workera nie powiodła się (może być zablokowana w tym środowisku):', err.message);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
