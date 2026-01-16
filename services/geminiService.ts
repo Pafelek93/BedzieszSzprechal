@@ -2,7 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Difficulty, Challenge, Feedback, Tense, AppMode } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Bezpieczne pobieranie klucza API
+const getApiKey = () => {
+  try {
+    return (typeof process !== 'undefined' && process.env?.API_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+};
+
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 const generateImageForMeme = async (description: string): Promise<string | undefined> => {
   try {
@@ -31,20 +40,11 @@ export const generateChallenge = async (
     : '';
   
   if (mode === AppMode.MEMES) {
-    // Używamy Gemini 3 Pro z Google Search dla memów
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Znajdź popularny, kultowy lub aktualny niemiecki mem internetowy (np. Mittwochsfrosch, Bernd das Brot, Anzeigenhauptmeister, memy o DB, itp.).
+      contents: `Znajdź popularny, kultowy lub aktualny niemiecki mem internetowy.
       Przygotuj opracowanie dla Polaka uczącego się niemieckiego. 
-      Zwróć JSON z polami: 
-      - memeTitle: Nazwa mema
-      - memeGermanText: Tekst występujący w memie po niemiecku
-      - polish: Tłumaczenie tekstu mema na polski
-      - memeExplanation: Wyjaśnienie żartu (dlaczego to jest śmieszne)
-      - memeContext: Kontekst kulturowy (historia, kiedy się go używa w Niemczech)
-      - imagePrompt: Krótki opis wizualny mema po angielsku do wygenerowania obrazka
-      - topic: Kategoria (np. Kultura, Transport, Jedzenie)
-      - difficulty: ${difficulty}`,
+      Zwróć JSON z polami: memeTitle, memeGermanText, polish, memeExplanation, memeContext, imagePrompt, topic, difficulty: ${difficulty}`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -70,7 +70,6 @@ export const generateChallenge = async (
     return { ...data, imageUrl, difficulty: data.difficulty as Difficulty };
   }
 
-  // Standardowe tryby
   let prompt = "";
   let responseSchema: any = {
     type: Type.OBJECT,
@@ -83,17 +82,13 @@ export const generateChallenge = async (
   };
 
   if (mode === AppMode.CLOZE) {
-    prompt = `Wygeneruj zdanie do uzupełnienia luki (odmiana czasownika) na poziomie ${difficulty}. 
-    Czas gramatyczny: ${selectedTense || 'dowolny'}.
-    Format: "Niemieckie zdanie z luką ___ (bezokolicznik)".
-    Przykład: "Ich ___ (gehen) nach Hause."${exclusionContext}`;
-    
+    prompt = `Wygeneruj zdanie do uzupełnienia luki (odmiana czasownika) na poziomie ${difficulty}. Czas: ${selectedTense || 'dowolny'}.${exclusionContext}`;
     responseSchema.properties.clozeSentence = { type: Type.STRING };
     responseSchema.properties.correctAnswer = { type: Type.STRING };
     responseSchema.properties.tense = { type: Type.STRING, enum: Object.values(Tense) };
     responseSchema.required.push("clozeSentence", "correctAnswer", "tense");
   } else if (mode === AppMode.SPEECH) {
-    prompt = `Wygeneruj ciekawe zdanie po niemiecku do ćwiczenia wymowy na poziomie ${difficulty}. Podaj też jego polskie tłumaczenie.${exclusionContext}`;
+    prompt = `Wygeneruj ciekawe zdanie po niemiecku na poziomie ${difficulty}.${exclusionContext}`;
     responseSchema.properties.german = { type: Type.STRING };
     responseSchema.required.push("german");
   } else if (mode === AppMode.WORDS) {
@@ -116,7 +111,7 @@ export const generateChallenge = async (
     if (mode === AppMode.WORDS) {
       const imgResp = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `A simple, clear, minimalist 3D illustration of "${data.polish}" for language learning.` }] },
+        contents: { parts: [{ text: `Minimalist illustration of "${data.polish}" for language learning.` }] },
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
       for (const part of imgResp.candidates[0].content.parts) {
@@ -129,20 +124,15 @@ export const generateChallenge = async (
   }
 };
 
-export const evaluateSpeech = async (
-  germanText: string,
-  audioBase64: string
-): Promise<Feedback> => {
+export const evaluateSpeech = async (germanText: string, audioBase64: string): Promise<Feedback> => {
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-    contents: [
-      {
-        parts: [
-          { inlineData: { mimeType: 'audio/webm;codecs=opus', data: audioBase64 } },
-          { text: `Oceń wymowę użytkownika. Tekst wzorcowy: "${germanText}". Porównaj nagranie z tekstem. Skup się na fonetyce języka niemieckiego.` }
-        ]
-      }
-    ],
+    contents: [{
+      parts: [
+        { inlineData: { mimeType: 'audio/webm;codecs=opus', data: audioBase64 } },
+        { text: `Oceń wymowę: "${germanText}".` }
+      ]
+    }],
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -158,30 +148,15 @@ export const evaluateSpeech = async (
       }
     }
   });
-
   return JSON.parse(response.text);
 };
 
-export const checkTranslation = async (
-  challenge: Challenge,
-  userTranslation: string,
-  difficulty: Difficulty,
-  mode: AppMode
-): Promise<Feedback> => {
-  let prompt = "";
-  let systemInstruction = "Jesteś ekspertem języka niemieckiego.";
-
-  if (mode === AppMode.CLOZE) {
-    prompt = `Zdanie: "${challenge.clozeSentence}", Czas: ${challenge.tense}, Odpowiedź: "${userTranslation}". Oceń odmianę.`;
-  } else {
-    prompt = `Oryginał (PL): "${challenge.polish}", Tłumaczenie (DE): "${userTranslation}". Poziom: ${difficulty}`;
-  }
-
+export const checkTranslation = async (challenge: Challenge, userTranslation: string, difficulty: Difficulty, mode: AppMode): Promise<Feedback> => {
+  const prompt = mode === AppMode.CLOZE ? `Zdanie: "${challenge.clozeSentence}", Czas: ${challenge.tense}, Odpowiedź: "${userTranslation}".` : `Oryginał (PL): "${challenge.polish}", Tłumaczenie (DE): "${userTranslation}".`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
     config: {
-      systemInstruction,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -196,23 +171,20 @@ export const checkTranslation = async (
       }
     }
   });
-
   return JSON.parse(response.text);
 };
 
 export const speakText = async (text: string) => {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: `Say clearly in German: ${text}` }] }],
+    contents: [{ parts: [{ text: `Say in German: ${text}` }] }],
     config: {
       responseModalities: ["AUDIO"],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
     },
   });
-
   const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   if (!base64Audio) return;
-
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
   const decode = (b64: string) => new Uint8Array(atob(b64).split("").map(c => c.charCodeAt(0)));
   const decodeAudio = async (data: Uint8Array) => {

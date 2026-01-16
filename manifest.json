@@ -2,15 +2,13 @@
 {
   "name": "DeutschMaster - Ucz się Niemieckiego",
   "short_name": "DeutschMaster",
-  "description": "Zaawansowana nauka języka niemieckiego z AI: słówka, zdania, gramatyka i memy.",
-  "start_url": "/",
-  "scope": "/",
+  "description": "Zaawansowana nauka języka niemieckiego z AI.",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "window-controls-overlay"],
   "orientation": "portrait",
   "background_color": "#f8fafc",
   "theme_color": "#fbbf24",
-  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/197/197571.png",
@@ -23,18 +21,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Memy DE",
-      "url": "/?mode=MEMES",
-      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/197/197571.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Wymowa",
-      "url": "/?mode=SPEECH",
-      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/197/197571.png", "sizes": "192x192" }]
     }
   ]
 }
