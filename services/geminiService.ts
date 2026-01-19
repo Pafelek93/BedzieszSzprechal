@@ -1,8 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Difficulty, Challenge, Feedback, Tense, AppMode } from "../types";
+import { Difficulty, Challenge, Feedback, Tense, AppMode, ContextSentence } from "../types";
 
-// Bezpieczne pobieranie klucza API
 const getApiKey = () => {
   try {
     return (typeof process !== 'undefined' && process.env?.API_KEY) || "";
@@ -33,7 +32,8 @@ export const generateChallenge = async (
   difficulty: Difficulty, 
   mode: AppMode, 
   masteredItems: string[] = [],
-  selectedTense?: Tense
+  selectedTense?: Tense,
+  customWord?: string
 ): Promise<Challenge> => {
   const exclusionContext = masteredItems.length > 0 
     ? `\n\nZAKAZ: Nie używaj tych haseł (opanowane): ${masteredItems.slice(-100).join(', ')}.` 
@@ -68,6 +68,42 @@ export const generateChallenge = async (
     const data = JSON.parse(response.text);
     const imageUrl = await generateImageForMeme(data.imagePrompt);
     return { ...data, imageUrl, difficulty: data.difficulty as Difficulty };
+  }
+
+  // Specjalna obsługa dla trybu Kontekstownik (20 zdań) z wysoką jakością
+  if (mode === AppMode.CONTEXT && customWord) {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: `Jesteś profesjonalnym lektorem języka niemieckiego. Wygeneruj dokładnie 20 unikalnych zdań w języku niemieckim, które zawierają słowo "${customWord}". 
+      WYMAGANIA JAKOŚCIOWE:
+      1. Poziom trudności: ${difficulty} (zdania muszą być idealnie dopasowane do tego poziomu).
+      2. Konstrukcja: Każde zdanie musi być w 100% poprawne gramatycznie, logiczne i brzmieć naturalnie dla native speakera.
+      3. Kontekst: Użyj słowa "${customWord}" w różnych codziennych sytuacjach. 
+      4. Różnorodność: Zastosuj różne czasy i szyki zdań (pytania, przeczenia, zdania złożone).
+      Zwróć wynik jako JSON z tablicą obiektów {german, polish}.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            contextSentences: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  german: { type: Type.STRING },
+                  polish: { type: Type.STRING }
+                },
+                required: ["german", "polish"]
+              }
+            }
+          },
+          required: ["contextSentences"]
+        }
+      }
+    });
+    const data = JSON.parse(response.text);
+    return { polish: `Przykłady dla: ${customWord}`, difficulty, contextSentences: data.contextSentences, targetWord: customWord };
   }
 
   let prompt = "";
@@ -118,7 +154,7 @@ export const generateChallenge = async (
         if (part.inlineData) data.imageUrl = `data:image/png;base64,${part.inlineData.data}`;
       }
     }
-    return { ...data, isWord: mode === AppMode.WORDS };
+    return { ...data, isWord: mode === AppMode.WORDS, targetWord: customWord };
   } catch (e) {
     return { polish: "Samochód", difficulty: Difficulty.A1, topic: "Podstawy" };
   }

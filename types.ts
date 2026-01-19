@@ -12,7 +12,8 @@ export enum AppMode {
   WORDS = 'WORDS',
   CLOZE = 'CLOZE',
   SPEECH = 'SPEECH',
-  MEMES = 'MEMES' // Nowy dział: Memy
+  MEMES = 'MEMES',
+  CONTEXT = 'CONTEXT' // Zmieniono z OWN_WORD na CONTEXT
 }
 
 export enum Tense {
@@ -20,6 +21,11 @@ export enum Tense {
   PERFECT = 'Perfekt',
   PAST = 'Präteritum',
   FUTURE = 'Futur I'
+}
+
+export interface ContextSentence {
+  german: string;
+  polish: string;
 }
 
 export interface Challenge {
@@ -32,11 +38,12 @@ export interface Challenge {
   clozeSentence?: string;
   correctAnswer?: string;
   tense?: Tense;
-  // Pola dla memów
   memeGermanText?: string;
   memeExplanation?: string;
   memeContext?: string;
   memeTitle?: string;
+  targetWord?: string;
+  contextSentences?: ContextSentence[]; // Lista dla trybu Kontekstownik
 }
 
 export interface Feedback {
